@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Local database (regenerated on run)
+database.db
+
+# ML artifacts (teammate adds locally; optional to commit small models)
+model/*.pkl
