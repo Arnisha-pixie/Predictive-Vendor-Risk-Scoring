@@ -8,6 +8,3 @@ venv/
 
 # Local database (regenerated on run)
 database.db
-
-# ML artifacts (teammate adds locally; optional to commit small models)
-model/*.pkl

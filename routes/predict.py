@@ -1,4 +1,5 @@
 import os
+import pickle
 import sqlite3
 from typing import Any, Dict, Tuple
 
@@ -13,15 +14,38 @@ except Exception:  # pragma: no cover
 
 predict_bp = Blueprint("predict", __name__)
 
+FEATURE_ORDER = [
+    "delay_rate",
+    "defect_rate",
+    "complaints",
+    "contract_value",
+    "performance_score",
+]
+
+# Map classifier labels to API risk categories and numeric scores for dashboard.
+CLASS_TO_CATEGORY = {
+    "High": "High Risk",
+    "Medium": "Medium Risk",
+    "Low": "Low Risk",
+}
+
+CLASS_SCORES = {
+    "High": 90.0,
+    "Medium": 65.0,
+    "Low": 25.0,
+}
+
 
 def _db_path() -> str:
     return current_app.config["DATABASE_PATH"]
 
 
-def _load_model_and_scaler() -> Tuple[Any, Any]:
-    if joblib is None:
-        return None, None
+def _load_pickle(path: str) -> Any:
+    with open(path, "rb") as f:
+        return pickle.load(f)
 
+
+def _load_model_and_scaler() -> Tuple[Any, Any]:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     model_path = os.path.join(base_dir, "model", "vendor_model.pkl")
     scaler_path = os.path.join(base_dir, "model", "scaler.pkl")
@@ -30,18 +54,24 @@ def _load_model_and_scaler() -> Tuple[Any, Any]:
         return None, None
 
     try:
-        model = joblib.load(model_path)
-        scaler = joblib.load(scaler_path)
+        model = _load_pickle(model_path)
+        scaler = _load_pickle(scaler_path)
         return model, scaler
     except Exception:
-        return None, None
+        if joblib is None:
+            return None, None
+        try:
+            model = joblib.load(model_path)
+            scaler = joblib.load(scaler_path)
+            return model, scaler
+        except Exception:
+            return None, None
 
 
 def _validate_payload(payload: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, str | None]:
-    required = ["delay_rate", "defect_rate", "complaints", "contract_value", "performance_score"]
-    for k in required:
-        if k not in payload:
-            return None, f"Missing field: {k}"
+    for field in FEATURE_ORDER:
+        if field not in payload:
+            return None, f"Missing field: {field}"
 
     def to_float(name: str) -> float:
         try:
@@ -67,7 +97,6 @@ def _validate_payload(payload: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, s
     except ValueError as e:
         return None, str(e)
 
-    # Basic validation (professors love this)
     if data["delay_rate"] < 0 or data["defect_rate"] < 0:
         return None, "Invalid Input: rates cannot be negative"
     if data["complaints"] < 0:
@@ -80,60 +109,67 @@ def _validate_payload(payload: Dict[str, Any]) -> Tuple[Dict[str, Any] | None, s
     return data, None
 
 
-def _risk_category(score: float) -> str:
-    if score >= 80:
-        return "High Risk"
-    if score >= 50:
-        return "Medium Risk"
-    return "Low Risk"
-
-
-def _fallback_risk_score(
+def _fallback_prediction(
     delay_rate: float,
     defect_rate: float,
     complaints: int,
     contract_value: float,
     performance_score: float,
-) -> float:
-    # Simple heuristic score 0..100 when model files aren't available.
-    contract_factor = min(20.0, contract_value / 10000.0)  # 0..20
+) -> Tuple[float, str]:
     score = (
         0.40 * delay_rate
         + 0.30 * defect_rate
         + 0.20 * (complaints * 2.0)
         + 0.10 * (100.0 - performance_score)
-        + contract_factor
+        + min(20.0, contract_value / 10000.0)
     )
-    return float(np.clip(score, 0.0, 100.0))
+    risk_score = float(np.clip(score, 0.0, 100.0))
+
+    if risk_score >= 80:
+        return risk_score, "High Risk"
+    if risk_score >= 50:
+        return risk_score, "Medium Risk"
+    return risk_score, "Low Risk"
 
 
-def _model_risk_score(
+def _model_prediction(
     delay_rate: float,
     defect_rate: float,
     complaints: int,
     contract_value: float,
     performance_score: float,
-) -> float:
+) -> Tuple[float, str]:
     model, scaler = _load_model_and_scaler()
     if model is None or scaler is None:
-        return _fallback_risk_score(delay_rate, defect_rate, complaints, contract_value, performance_score)
+        return _fallback_prediction(
+            delay_rate, defect_rate, complaints, contract_value, performance_score
+        )
 
-    X = np.array([[delay_rate, defect_rate, complaints, contract_value, performance_score]], dtype=float)
+    X = np.array(
+        [[delay_rate, defect_rate, complaints, contract_value, performance_score]],
+        dtype=float,
+    )
+
     try:
-        Xs = scaler.transform(X)
-        pred = model.predict(Xs)
+        X_scaled = scaler.transform(X)
+        predicted_class = model.predict(X_scaled)[0]
+        category = CLASS_TO_CATEGORY.get(str(predicted_class), "Medium Risk")
 
-        # Accept common shapes: [0..100], [0..1], or class labels.
-        if isinstance(pred, (list, tuple, np.ndarray)):
-            pred_val = float(np.array(pred).reshape(-1)[0])
+        if hasattr(model, "predict_proba"):
+            probabilities = model.predict_proba(X_scaled)[0]
+            classes = list(model.classes_)
+            risk_score = sum(
+                prob * CLASS_SCORES.get(str(label), 50.0)
+                for prob, label in zip(probabilities, classes)
+            )
         else:
-            pred_val = float(pred)
+            risk_score = CLASS_SCORES.get(str(predicted_class), 50.0)
 
-        if 0.0 <= pred_val <= 1.0:
-            return float(np.clip(pred_val * 100.0, 0.0, 100.0))
-        return float(np.clip(pred_val, 0.0, 100.0))
+        return float(np.clip(risk_score, 0.0, 100.0)), category
     except Exception:
-        return _fallback_risk_score(delay_rate, defect_rate, complaints, contract_value, performance_score)
+        return _fallback_prediction(
+            delay_rate, defect_rate, complaints, contract_value, performance_score
+        )
 
 
 @predict_bp.post("/predict")
@@ -143,16 +179,14 @@ def predict():
     if err:
         return jsonify({"error": err}), 400
 
-    risk_score = _model_risk_score(
+    risk_score, category = _model_prediction(
         delay_rate=data["delay_rate"],
         defect_rate=data["defect_rate"],
         complaints=data["complaints"],
         contract_value=data["contract_value"],
         performance_score=data["performance_score"],
     )
-    category = _risk_category(risk_score)
 
-    # Store in SQLite using parameterized queries (SQL injection protection)
     with sqlite3.connect(_db_path()) as conn:
         cur = conn.cursor()
         cur.execute(
@@ -195,4 +229,3 @@ def delete_vendor(vendor_id: int):
         if cur.rowcount == 0:
             return jsonify({"error": "Vendor not found"}), 404
     return jsonify({"deleted": vendor_id})
-
