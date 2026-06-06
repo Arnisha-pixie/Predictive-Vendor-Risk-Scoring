@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VendorIQ — Predictive Risk Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+/* ── RESET & TOKENS ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; font-size: 16px; }
+
+:root {
+  /* Colors */
+  --bg:         #09090c;
+  --surface:    #111217;
+  --surface2:   #18191f;
+  --surface3:   #1e2028;
+  --border:     rgba(255,255,255,0.07);
+  --border-md:  rgba(255,255,255,0.12);
+  --border-hi:  rgba(255,255,255,0.18);
+
+  --green:      #00e5a0;
+  --green-dim:  rgba(0,229,160,0.1);
+  --green-glow: rgba(0,229,160,0.22);
+
+  --red:        #ff4d4d;
+  --red-dim:    rgba(255,77,77,0.1);
+
+  --amber:      #ffb347;
+  --amber-dim:  rgba(255,179,71,0.1);
+
+  --blue:       #4d9fff;
+  --blue-dim:   rgba(77,159,255,0.1);
+
+  --text:       #e4e6ed;
+  --text-muted: #6b7280;
+  --text-dim:   #373b47;
+
+  /* Fonts */
+  --font:      'Syne', sans-serif;
+  --mono:      'Space Mono', monospace;
+
+  /* Spacing */
+  --sidebar-w: 224px;
+  --topbar-h:  58px;
+  --r:         10px;
+  --r-lg:      14px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-areas:
+    "sidebar topbar"
+    "sidebar main";
+  overflow-x: hidden;
+}
+
+/* subtle noise grain */
+body::after {
+  content: '';
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  opacity: 0.5;
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  grid-area: sidebar;
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  z-index: 200;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-top { flex: 1; overflow-y: auto; padding-bottom: 12px; }
+
+.brand {
+  display: flex; align-items: center; gap: 11px;
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.brand-icon {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: var(--green); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; box-shadow: 0 0 18px var(--green-glow);
+}
+.brand-name { font-size: 16px; font-weight: 800; color: #fff; letter-spacing: -0.3px; line-height: 1.2; }
+.brand-sub  { font-family: var(--mono); font-size: 9px; color: var(--text-dim); letter-spacing: 0.05em; }
+
+.nav { padding: 0 10px; display: flex; flex-direction: column; gap: 1px; }
+
+.nav-group-label {
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--text-dim);
+  padding: 14px 10px 5px; user-select: none;
+}
+
+.nav-link {
+  display: flex; align-items: center; gap: 9px;
+  padding: 9px 11px; border-radius: 8px;
+  font-size: 13px; font-weight: 500;
+  color: var(--text-muted); cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  user-select: none; text-decoration: none;
+}
+.nav-link:hover { background: var(--surface2); color: var(--text); }
+.nav-link.active {
+  background: var(--green-dim); color: var(--green);
+  border-color: rgba(0,229,160,0.18);
+}
+.nav-link svg { flex-shrink: 0; }
+
+.nav-badge {
+  margin-left: auto; background: var(--red);
+  font-family: var(--mono); font-size: 9px;
+  padding: 2px 7px; border-radius: 20px; color: #fff;
+}
+
+.sidebar-bottom {
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
+}
+.api-status {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--text-muted);
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  background: var(--green); box-shadow: 0 0 8px var(--green-glow);
+  animation: blink 2.2s infinite;
+}
+.status-dot.offline { background: var(--red); box-shadow: none; animation: none; }
+.status-dot.pending { background: var(--amber); box-shadow: none; animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+/* ── TOPBAR ── */
+.topbar {
+  grid-area: topbar;
+  position: sticky; top: 0; z-index: 100;
+  height: var(--topbar-h);
+  background: rgba(9,9,12,0.82); backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 28px;
+}
+.hamburger {
+  display: none; background: none; border: none; cursor: pointer;
+  color: var(--text-muted); padding: 4px;
+}
+.topbar-title { font-size: 15px; font-weight: 700; color: #fff; flex: 1; }
+.topbar-actions { display: flex; gap: 10px; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+  cursor: pointer; border: 1px solid transparent; transition: all 0.14s;
+  font-family: var(--font); white-space: nowrap; text-decoration: none;
+}
+.btn-ghost {
+  background: var(--surface2); border-color: var(--border-md); color: var(--text-muted);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--border-hi); }
+.btn-primary {
+  background: var(--green); color: #000; font-weight: 700;
+}
+.btn-primary:hover { background: #1affc0; }
+.btn-primary:active { transform: scale(0.98); }
+.btn-primary:disabled { background: var(--surface3); color: var(--text-dim); cursor: not-allowed; transform: none; }
+.btn-full { width: 100%; justify-content: center; padding: 13px; font-size: 14px; margin-top: 6px; }
+.btn-danger { background: var(--red-dim); color: var(--red); border-color: rgba(255,77,77,0.2); }
+.btn-danger:hover { background: rgba(255,77,77,0.18); }
+
+/* ── MAIN AREA ── */
+.main {
+  grid-area: main;
+  overflow-y: auto; overflow-x: hidden;
+  padding: 28px 32px 48px;
+  min-height: calc(100vh - var(--topbar-h));
+}
+
+/* ── PAGES ── */
+.page { display: none; }
+.page.active { display: block; animation: fadeUp 0.2s ease both; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+.page-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 26px; gap: 16px;
+}
+.page-title { font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -0.4px; }
+.page-sub   { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 22px 24px;
+  transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--border-md); }
+.card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 18px; }
+.card-title { font-size: 14px; font-weight: 700; color: #fff; }
+.card-sub   { font-family: var(--mono); font-size: 10px; color: var(--text-muted); margin-top: 3px; }
+
+/* ── STAT CARDS ── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px; margin-bottom: 22px;
+}
+.stat-card {
+  border-radius: var(--r-lg); padding: 20px 22px;
+  border: 1px solid var(--border); position: relative; overflow: hidden;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.stat-card:hover { transform: translateY(-2px); border-color: var(--border-md); }
+.stat-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+}
+.stat-blue   { background: linear-gradient(145deg, #0f1420, var(--surface)); }
+.stat-blue::before   { background: var(--blue); }
+.stat-red    { background: linear-gradient(145deg, #1a0f0f, var(--surface)); }
+.stat-red::before    { background: var(--red); }
+.stat-amber  { background: linear-gradient(145deg, #1a1408, var(--surface)); }
+.stat-amber::before  { background: var(--amber); }
+.stat-green  { background: linear-gradient(145deg, #081a14, var(--surface)); }
+.stat-green::before  { background: var(--green); }
+
+.stat-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px; }
+.stat-value { font-size: 34px; font-weight: 800; color: #fff; line-height: 1; }
+.stat-blue  .stat-value { color: var(--blue); }
+.stat-red   .stat-value { color: var(--red); }
+.stat-amber .stat-value { color: var(--amber); }
+.stat-green .stat-value { color: var(--green); }
+.stat-meta  { font-size: 11px; color: var(--text-muted); margin-top: 7px; }
+
+/* ── CHARTS ── */
+.chart-row {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 18px; margin-bottom: 18px;
+}
+.chart-wrap { position: relative; }
+.chart-legend {
+  display: flex; gap: 16px; flex-wrap: wrap;
+  margin-top: 14px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.legend-dot  { width: 8px; height: 8px; border-radius: 2px; }
+.stat-avg-badge {
+  font-family: var(--mono); font-size: 11px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-muted); padding: 4px 10px; border-radius: 20px;
+}
+
+/* ── VENDOR TABLE ── */
+.table-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px; flex-wrap: wrap; gap: 10px;
+}
+.search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 12px;
+}
+.search-box input {
+  background: none; border: none; outline: none;
+  color: var(--text); font-family: var(--mono); font-size: 12px; width: 200px;
+}
+.search-box input::placeholder { color: var(--text-dim); }
+.filter-pills { display: flex; gap: 6px; }
+.filter-pill {
+  padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: 1px solid var(--border); background: none;
+  color: var(--text-muted); transition: all 0.12s; font-family: var(--font);
+}
+.filter-pill:hover { border-color: var(--border-hi); color: var(--text); }
+.filter-pill.active { background: var(--green-dim); border-color: rgba(0,229,160,0.25); color: var(--green); }
+
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  text-align: left; font-family: var(--mono); font-size: 9px;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted);
+  padding: 10px 16px; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.data-table td {
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+  vertical-align: middle; font-size: 13px;
+}
+.data-table tbody tr:last-child td { border-bottom: none; }
+.data-table tbody tr { transition: background 0.1s; }
+.data-table tbody tr:hover { background: var(--surface2); }
+
+.vendor-name  { font-weight: 600; color: #fff; }
+.vendor-anon  { color: var(--text-dim); font-style: italic; }
+.mono-id      { font-family: var(--mono); font-size: 10px; color: var(--text-dim); }
+.mono-cell    { font-family: var(--mono); font-size: 12px; color: var(--text-muted); }
+
+/* risk pills */
+.risk-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: 20px;
+  font-family: var(--mono); font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.risk-pill::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
+.pill-high   { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(255,77,77,0.2); }
+.pill-medium { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,179,71,0.2); }
+.pill-low    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,229,160,0.2); }
+
+/* score bar */
+.score-cell { display: flex; align-items: center; gap: 8px; }
+.score-bar  { flex: 1; height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; min-width: 50px; }
+.score-fill { height: 100%; border-radius: 2px; }
+.score-num  { font-family: var(--mono); font-size: 11px; color: var(--text-muted); min-width: 28px; text-align: right; }
+
+/* delete btn */
+.del-btn {
+  width: 30px; height: 30px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: 1px solid var(--border); color: var(--text-dim);
+  cursor: pointer; transition: all 0.12s;
+}
+.del-btn:hover { background: var(--red-dim); border-color: rgba(255,77,77,0.3); color: var(--red); }
+
+.empty-state {
+  padding: 60px; text-align: center;
+  color: var(--text-muted); font-family: var(--mono); font-size: 12px;
+  line-height: 2;
+}
+.empty-icon { font-size: 40px; color: var(--text-dim); margin-bottom: 12px; }
+
+/* ── PREDICT PAGE ── */
+.predict-layout {
+  display: grid; grid-template-columns: 1fr 360px;
+  gap: 24px; align-items: start;
+}
+.predict-left  { display: flex; flex-direction: column; }
+.predict-right { position: sticky; top: calc(var(--topbar-h) + 20px); }
+
+/* form */
+.form-field  { margin-bottom: 20px; }
+.form-label  {
+  display: block; font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 8px;
+}
+.form-optional { color: var(--text-dim); font-size: 9px; }
+.form-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 13px;
+  color: var(--text); font-family: var(--mono); font-size: 13px;
+  outline: none; transition: border-color 0.14s;
+}
+.form-input:focus { border-color: rgba(0,229,160,0.4); box-shadow: 0 0 0 3px rgba(0,229,160,0.07); }
+.form-hint { font-family: var(--mono); font-size: 10px; color: var(--text-dim); margin-top: 5px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+/* sliders */
+.slider-group { display: flex; flex-direction: column; gap: 8px; }
+.slider {
+  width: 100%; -webkit-appearance: none; height: 4px;
+  background: var(--surface3); border-radius: 2px; outline: none; cursor: pointer;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 17px; height: 17px; border-radius: 50%;
+  background: var(--green); cursor: pointer; border: 2px solid var(--bg);
+  box-shadow: 0 0 10px var(--green-glow);
+}
+.slider::-moz-range-thumb {
+  width: 17px; height: 17px; border-radius: 50%;
+  background: var(--green); border: 2px solid var(--bg); cursor: pointer;
+}
+.slider-footer { display: flex; justify-content: space-between; align-items: center; }
+.slider-bounds-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); }
+.slider-val { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--green); }
+
+/* result panel */
+.result-card { padding: 0; overflow: hidden; }
+.result-placeholder {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 48px 28px; text-align: center;
+  color: var(--text-muted); font-size: 13px; line-height: 1.7;
+}
+.result-placeholder strong { color: var(--text); }
+
+.gauge-wrap {
+  position: relative; display: flex; justify-content: center;
+  padding: 24px 24px 0; background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+}
+.gauge-score-overlay {
+  position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%);
+  text-align: center;
+}
+.gauge-number { font-size: 38px; font-weight: 800; color: #fff; line-height: 1; }
+.gauge-unit   { font-family: var(--mono); font-size: 11px; color: var(--text-muted); margin-left: 2px; }
+
+.result-category {
+  font-size: 18px; font-weight: 800; padding: 16px 24px 4px;
+}
+.cat-high   { color: var(--red); }
+.cat-medium { color: var(--amber); }
+.cat-low    { color: var(--green); }
+.result-desc { font-size: 12px; color: var(--text-muted); padding: 0 24px 18px; line-height: 1.65; }
+
+.factor-section { padding: 0 24px 22px; border-top: 1px solid var(--border); padding-top: 16px; }
+.factor-title { font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 14px; }
+.factor-row   { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.factor-name  { font-family: var(--mono); font-size: 10px; color: var(--text-muted); width: 80px; flex-shrink: 0; }
+.factor-bar   { flex: 1; height: 3px; background: var(--surface3); border-radius: 2px; overflow: hidden; }
+.factor-fill  { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+.factor-val   { font-family: var(--mono); font-size: 11px; color: var(--text); min-width: 36px; text-align: right; }
+
+/* session history */
+.history-header { padding: 13px 20px; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 700; color: #fff; }
+.history-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 20px; border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.history-item:last-child { border-bottom: none; }
+.h-name  { flex: 1; color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.h-score { font-family: var(--mono); font-size: 11px; }
+
+/* ── DOCS PAGE ── */
+.docs-layout { display: flex; flex-direction: column; gap: 20px; max-width: 900px; }
+.docs-hero {
+  display: flex; flex-direction: column; gap: 16px;
+  background: linear-gradient(135deg, #0d1a12, var(--surface));
+}
+.docs-hero h2   { font-size: 18px; font-weight: 800; color: #fff; margin-bottom: 8px; }
+.docs-hero p    { font-size: 13px; color: var(--text-muted); line-height: 1.75; }
+.docs-hero code { background: var(--surface3); padding: 2px 7px; border-radius: 4px; font-family: var(--mono); font-size: 12px; color: var(--green); }
+.docs-model-tag { display: flex; gap: 8px; flex-wrap: wrap; }
+.mono-tag {
+  font-family: var(--mono); font-size: 11px; padding: 4px 12px;
+  background: var(--surface3); border: 1px solid var(--border); border-radius: 20px; color: var(--text-muted);
+}
+.endpoint-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.endpoint-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px 20px; transition: border-color 0.14s;
+}
+.endpoint-card:hover { border-color: var(--border-md); }
+.method-badge {
+  display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 700;
+  padding: 3px 9px; border-radius: 5px; margin-bottom: 9px;
+}
+.method-post { background: var(--blue-dim);  color: var(--blue); }
+.method-get  { background: var(--green-dim); color: var(--green); }
+.method-del  { background: var(--red-dim);   color: var(--red); }
+.endpoint-path { font-family: var(--mono); font-size: 14px; color: #fff; margin-bottom: 7px; font-weight: 700; }
+.endpoint-desc { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+.endpoint-desc code {
+  background: var(--surface3); padding: 1px 5px; border-radius: 3px;
+  font-family: var(--mono); font-size: 11px; color: var(--text);
+}
+.docs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.docs-table th {
+  text-align: left; font-family: var(--mono); font-size: 9px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-muted); padding: 10px 16px;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+}
+.docs-table td { padding: 11px 16px; border-bottom: 1px solid var(--border); color: var(--text); }
+.docs-table tbody tr:last-child td { border-bottom: none; }
+.docs-table code {
+  background: var(--surface2); padding: 2px 6px; border-radius: 4px;
+  font-family: var(--mono); font-size: 12px; color: var(--green);
+}
+.type-badge {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  padding: 2px 8px; border-radius: 4px;
+}
+.type-str   { background: var(--green-dim); color: var(--green); }
+.type-float { background: var(--blue-dim);  color: var(--blue); }
+.type-int   { background: var(--amber-dim); color: var(--amber); }
+.threshold-list { display: flex; flex-direction: column; gap: 12px; }
+.threshold-row  { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.threshold-rule { font-family: var(--mono); font-size: 11px; color: var(--text-muted); }
+.threshold-rule code {
+  background: var(--surface2); padding: 2px 6px; border-radius: 4px;
+  color: var(--text); font-size: 11px;
+}
+
+/* ── TOAST ── */
+#toasts {
+  position: fixed; bottom: 22px; right: 22px;
+  display: flex; flex-direction: column; gap: 8px; z-index: 9999;
+}
+.toast {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface2); border: 1px solid var(--border-md);
+  border-radius: 10px; padding: 12px 16px;
+  font-size: 13px; color: var(--text); min-width: 230px;
+  animation: toastIn 0.22s ease both;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.toast.ok  { border-left: 3px solid var(--green); }
+.toast.err { border-left: 3px solid var(--red); }
+.toast.warn { border-left: 3px solid var(--amber); }
+@keyframes toastIn  { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
+@keyframes toastOut { to{opacity:0;transform:translateX(16px)} }
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-md); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 1100px) {
+  .stat-grid  { grid-template-columns: repeat(2, 1fr); }
+  .chart-row  { grid-template-columns: 1fr; }
+  .predict-layout { grid-template-columns: 1fr; }
+  .predict-right { position: static; }
+  .endpoint-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+  body { grid-template-columns: 1fr; grid-template-areas: "topbar" "main"; }
+  .sidebar {
+    transform: translateX(-224px);
+    width: 224px;
+  }
+  .sidebar.open { transform: translateX(0); box-shadow: 4px 0 40px rgba(0,0,0,0.6); }
+  .hamburger { display: flex; }
+  .main { padding: 20px 16px 40px; }
+  .stat-grid { grid-template-columns: 1fr 1fr; }
+  .form-row-2 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .topbar-actions .btn-ghost { display: none; }
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">VendorIQ</div>
+          <div class="brand-sub">Risk Intelligence</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-group-label">Overview</div>
+        <a class="nav-link active" data-page="dashboard">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-link" data-page="vendors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          All Vendors
+          <span class="nav-badge" id="nav-badge">0</span>
+        </a>
+
+        <div class="nav-group-label">Actions</div>
+        <a class="nav-link" data-page="predict">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Predict Risk
+        </a>
+
+        <div class="nav-group-label">Reference</div>
+        <a class="nav-link" data-page="docs">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          API Docs
+        </a>
+      </nav>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="api-status" id="api-status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-label">Connecting…</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── TOPBAR ── -->
+  <header class="topbar">
+    <button class="hamburger" id="hamburger" aria-label="Toggle sidebar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="topbar-title" id="topbar-title">Dashboard</div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost" id="refresh-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-primary" data-goto="predict">+ New Prediction</button>
+    </div>
+  </header>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- PAGE: DASHBOARD -->
+    <section id="page-dashboard" class="page active">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Risk Overview</h1>
+          <p class="page-sub">Live portfolio analytics · RandomForest ML model</p>
+        </div>
+      </div>
+
+      <!-- STAT CARDS -->
+      <div class="stat-grid">
+        <div class="stat-card stat-blue">
+          <div class="stat-label">Total Vendors</div>
+          <div class="stat-value" id="s-total">—</div>
+          <div class="stat-meta" id="s-total-meta">in database</div>
+        </div>
+        <div class="stat-card stat-red">
+          <div class="stat-label">High Risk</div>
+          <div class="stat-value" id="s-high">—</div>
+          <div class="stat-meta" id="s-high-meta">—</div>
+        </div>
+        <div class="stat-card stat-amber">
+          <div class="stat-label">Medium Risk</div>
+          <div class="stat-value" id="s-medium">—</div>
+          <div class="stat-meta" id="s-med-meta">—</div>
+        </div>
+        <div class="stat-card stat-green">
+          <div class="stat-label">Low Risk</div>
+          <div class="stat-value" id="s-low">—</div>
+          <div class="stat-meta" id="s-low-meta">—</div>
+        </div>
+      </div>
+
+      <!-- CHARTS ROW 1 -->
+      <div class="chart-row">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Risk Distribution</div>
+              <div class="card-sub">Breakdown by category</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:220px">
+            <canvas id="chart-donut"></canvas>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>High</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span>Medium</span>
+            <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>Low</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Feature Averages</div>
+              <div class="card-sub">Portfolio-wide means (normalized)</div>
+            </div>
+          </div>
+          <div class="chart-wrap" style="height:220px">
+            <canvas id="chart-radar"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- CHART: HISTOGRAM -->
+      <div class="card" style="margin-bottom:0">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Score Distribution</div>
+            <div class="card-sub">Vendor risk scores across 10-point buckets</div>
+          </div>
+          <div class="stat-avg-badge" id="avg-score-badge"></div>
+        </div>
+        <div class="chart-wrap" style="height:180px">
+          <canvas id="chart-hist"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: VENDORS -->
+    <section id="page-vendors" class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Vendor Registry</h1>
+          <p class="page-sub">All scored vendors · sorted by most recent</p>
+        </div>
+        <button class="btn btn-primary" data-goto="predict">+ Add Vendor</button>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="table-toolbar">
+          <div class="search-box">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="vendor-search" placeholder="Search by name…" autocomplete="off" />
+          </div>
+          <div class="filter-pills">
+            <button class="filter-pill active" data-filter="all">All</button>
+            <button class="filter-pill" data-filter="High Risk">High</button>
+            <button class="filter-pill" data-filter="Medium Risk">Medium</button>
+            <button class="filter-pill" data-filter="Low Risk">Low</button>
+          </div>
+        </div>
+        <div id="vendor-table-wrap"></div>
+      </div>
+    </section>
+
+    <!-- PAGE: PREDICT -->
+    <section id="page-predict" class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Predict Risk</h1>
+          <p class="page-sub">ML-powered scoring · POST /predict · RandomForest + StandardScaler</p>
+        </div>
+      </div>
+
+      <div class="predict-layout">
+        <!-- FORM -->
+        <div class="predict-left">
+          <div class="card">
+            <div class="card-title" style="margin-bottom:22px">Vendor Details</div>
+
+            <div class="form-field">
+              <label class="form-label">Vendor Name <span class="form-optional">optional</span></label>
+              <input class="form-input" type="text" id="f-name" placeholder="e.g. Acme Industrial Ltd" autocomplete="off" />
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-field">
+                <label class="form-label">Delay Rate</label>
+                <div class="slider-group">
+                  <input type="range" class="slider" id="f-delay" min="0" max="30" step="0.5" value="10" />
+                  <div class="slider-footer">
+                    <span class="slider-bounds-label">0% – 30%</span>
+                    <span class="slider-val" id="sv-delay">10.0%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Defect Rate</label>
+                <div class="slider-group">
+                  <input type="range" class="slider" id="f-defect" min="0" max="30" step="0.5" value="5" />
+                  <div class="slider-footer">
+                    <span class="slider-bounds-label">0% – 30%</span>
+                    <span class="slider-val" id="sv-defect">5.0%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label class="form-label">Performance Score</label>
+              <div class="slider-group">
+                <input type="range" class="slider" id="f-perf" min="0" max="100" step="1" value="80" />
+                <div class="slider-footer">
+                  <span class="slider-bounds-label">0 (worst) – 100 (best)</span>
+                  <span class="slider-val" id="sv-perf">80 / 100</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-field">
+                <label class="form-label">Complaints</label>
+                <input class="form-input" type="number" id="f-complaints" value="1" min="0" />
+                <div class="form-hint">Total complaint count</div>
+              </div>
+              <div class="form-field">
+                <label class="form-label">Contract Value ($)</label>
+                <input class="form-input" type="number" id="f-contract" value="500000" min="0" />
+                <div class="form-hint">USD</div>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-full" id="predict-btn">Run Prediction</button>
+          </div>
+
+          <!-- SESSION HISTORY -->
+          <div class="card" id="history-card" style="display:none;margin-top:20px;padding:0;overflow:hidden">
+            <div class="history-header">Session history</div>
+            <div id="history-list"></div>
+          </div>
+        </div>
+
+        <!-- RESULT PANEL -->
+        <div class="predict-right">
+          <div class="card result-card">
+            <div id="result-placeholder" class="result-placeholder">
+              <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-dim)"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              <p>Fill in the form and hit<br/><strong>Run Prediction</strong> to get<br/>the ML model's risk score.</p>
+            </div>
+            <div id="result-content" style="display:none">
+              <div class="gauge-wrap">
+                <canvas id="chart-gauge" width="200" height="110"></canvas>
+                <div class="gauge-score-overlay">
+                  <span class="gauge-number" id="gauge-number">0</span>
+                  <span class="gauge-unit">/ 100</span>
+                </div>
+              </div>
+              <div class="result-category" id="result-category">—</div>
+              <div class="result-desc" id="result-desc"></div>
+
+              <div class="factor-section">
+                <div class="factor-title">Feature Contribution</div>
+                <div class="factor-row">
+                  <span class="factor-name">Delay rate</span>
+                  <div class="factor-bar"><div class="factor-fill" id="fb-delay" style="background:var(--red)"></div></div>
+                  <span class="factor-val" id="fv-delay">—</span>
+                </div>
+                <div class="factor-row">
+                  <span class="factor-name">Defect rate</span>
+                  <div class="factor-bar"><div class="factor-fill" id="fb-defect" style="background:var(--amber)"></div></div>
+                  <span class="factor-val" id="fv-defect">—</span>
+                </div>
+                <div class="factor-row">
+                  <span class="factor-name">Complaints</span>
+                  <div class="factor-bar"><div class="factor-fill" id="fb-complaints" style="background:var(--blue)"></div></div>
+                  <span class="factor-val" id="fv-complaints">—</span>
+                </div>
+                <div class="factor-row">
+                  <span class="factor-name">Performance</span>
+                  <div class="factor-bar"><div class="factor-fill" id="fb-perf" style="background:var(--green)"></div></div>
+                  <span class="factor-val" id="fv-perf">—</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PAGE: DOCS -->
+    <section id="page-docs" class="page">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">API Reference</h1>
+          <p class="page-sub">Flask backend · http://127.0.0.1:5000</p>
+        </div>
+      </div>
+
+      <div class="docs-layout">
+        <div class="docs-hero card">
+          <div class="docs-hero-text">
+            <h2>How it works</h2>
+            <p>VendorIQ uses a <strong>RandomForest classifier</strong> trained on procurement KPI data. All features are scaled with <code>StandardScaler</code> before inference. The model uses probability-weighted scoring across High/Medium/Low classes; a heuristic fallback runs automatically if model files are missing.</p>
+          </div>
+          <div class="docs-model-tag">
+            <span class="mono-tag">RandomForestClassifier</span>
+            <span class="mono-tag">n_estimators=200</span>
+            <span class="mono-tag">StandardScaler</span>
+          </div>
+        </div>
+
+        <div class="endpoint-grid">
+          <div class="endpoint-card">
+            <span class="method-badge method-post">POST</span>
+            <div class="endpoint-path">/predict</div>
+            <p class="endpoint-desc">Score a vendor and persist the result to SQLite. Returns <code>risk_score</code> and <code>risk_category</code>.</p>
+          </div>
+          <div class="endpoint-card">
+            <span class="method-badge method-get">GET</span>
+            <div class="endpoint-path">/vendors</div>
+            <p class="endpoint-desc">Fetch all vendor records ordered by most recent. Powering dashboard stats and the vendor table.</p>
+          </div>
+          <div class="endpoint-card">
+            <span class="method-badge method-del">DELETE</span>
+            <div class="endpoint-path">/vendor/:id</div>
+            <p class="endpoint-desc">Remove a vendor record by ID. Returns 404 if not found. Immediately reflected in the UI.</p>
+          </div>
+          <div class="endpoint-card">
+            <span class="method-badge method-get">GET</span>
+            <div class="endpoint-path">/health</div>
+            <p class="endpoint-desc">Returns <code>{"status":"ok"}</code> when the API is running. Polled every 10 seconds by the status indicator.</p>
+          </div>
+        </div>
+
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="table-toolbar" style="border-bottom:1px solid var(--border)">
+            <div class="card-title" style="padding:0">POST /predict — Request Payload</div>
+          </div>
+          <table class="docs-table">
+            <thead>
+              <tr><th>Field</th><th>Type</th><th>Constraint</th><th>Description</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>vendor_name</code></td><td><span class="type-badge type-str">string</span></td><td>optional</td><td>Human-readable vendor identifier</td></tr>
+              <tr><td><code>delay_rate</code></td><td><span class="type-badge type-float">float</span></td><td>≥ 0</td><td>Average delivery delay as % (days)</td></tr>
+              <tr><td><code>defect_rate</code></td><td><span class="type-badge type-float">float</span></td><td>≥ 0</td><td>Percentage of defective units delivered</td></tr>
+              <tr><td><code>complaints</code></td><td><span class="type-badge type-int">int</span></td><td>≥ 0</td><td>Total complaints raised against vendor</td></tr>
+              <tr><td><code>contract_value</code></td><td><span class="type-badge type-float">float</span></td><td>≥ 0</td><td>Total contract value in USD</td></tr>
+              <tr><td><code>performance_score</code></td><td><span class="type-badge type-float">float</span></td><td>0 – 100</td><td>Composite vendor performance score</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="card-title" style="margin-bottom:16px">Risk Category Thresholds</div>
+          <div class="threshold-list">
+            <div class="threshold-row">
+              <span class="risk-pill pill-high">High Risk</span>
+              <span class="threshold-rule"><code>defect_rate &gt; 15</code> OR <code>delay_rate &gt; 15</code> OR <code>performance_score &lt; 50</code></span>
+            </div>
+            <div class="threshold-row">
+              <span class="risk-pill pill-medium">Medium Risk</span>
+              <span class="threshold-rule"><code>defect_rate &gt; 5</code> OR <code>delay_rate &gt; 7</code> OR <code>performance_score &lt; 80</code></span>
+            </div>
+            <div class="threshold-row">
+              <span class="risk-pill pill-low">Low Risk</span>
+              <span class="threshold-rule">All metrics within acceptable bounds</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toasts"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script>
+/* ═══════════════════════════════════════════════════
+   VendorIQ — app.js
+   Talks to Flask backend at http://127.0.0.1:5000
+   Sections:
+     1. Config & State
+     2. Router
+     3. API Layer
+     4. Dashboard
+     5. Vendor Table
+     6. Predict
+     7. Utility (toast, charts)
+═══════════════════════════════════════════════════ */
+
+'use strict';
+
+/* ── 1. CONFIG & STATE ── */
+const API = 'http://127.0.0.1:5000';
+
+const state = {
+  vendors: [],
+  vendorFilter: 'all',
+  vendorSearch: '',
+  charts: {},
+  sessionHistory: [],
+  gaugeChart: null,
+};
+
+/* ── 2. ROUTER ── */
+const PAGE_TITLES = {
+  dashboard: 'Dashboard',
+  vendors:   'All Vendors',
+  predict:   'Predict Risk',
+  docs:      'API Reference',
+};
+
+function navigate(pageId) {
+  // hide all pages
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+
+  const page = document.getElementById('page-' + pageId);
+  const link = document.querySelector(`.nav-link[data-page="${pageId}"]`);
+  if (!page) return;
+
+  page.classList.add('active');
+  if (link) link.classList.add('active');
+  document.getElementById('topbar-title').textContent = PAGE_TITLES[pageId] || pageId;
+
+  // close sidebar on mobile
+  document.getElementById('sidebar').classList.remove('open');
+
+  if (pageId === 'dashboard') renderDashboard();
+  if (pageId === 'vendors')   renderVendorTable();
+}
+
+function initRouter() {
+  // sidebar nav links
+  document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', () => navigate(link.dataset.page));
+  });
+  // any [data-goto] button
+  document.querySelectorAll('[data-goto]').forEach(btn => {
+    btn.addEventListener('click', () => navigate(btn.dataset.goto));
+  });
+  // topbar + button in page-header
+  document.querySelectorAll('[data-goto]').forEach(el => {
+    el.addEventListener('click', () => navigate(el.dataset.goto));
+  });
+  // hamburger toggle
+  document.getElementById('hamburger').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('open');
+  });
+  // refresh
+  document.getElementById('refresh-btn').addEventListener('click', () => {
+    loadVendors(true);
+    checkHealth();
+  });
+}
+
+/* ── 3. API LAYER ── */
+async function checkHealth() {
+  const dot   = document.getElementById('status-dot');
+  const label = document.getElementById('status-label');
+  dot.className = 'status-dot pending';
+  label.textContent = 'Checking…';
+  try {
+    const res = await fetch(`${API}/health`, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      dot.className = 'status-dot';
+      label.textContent = 'API online';
+    } else {
+      throw new Error();
+    }
+  } catch {
+    dot.className = 'status-dot offline';
+    label.textContent = 'API offline';
+  }
+}
+
+async function loadVendors(showToast = false) {
+  try {
+    const res = await fetch(`${API}/vendors`);
+    if (!res.ok) throw new Error('Server error');
+    state.vendors = await res.json();
+  } catch {
+    state.vendors = [];
+    if (showToast) toast('Could not reach API — is Flask running?', 'warn');
+  }
+  updateNavBadge();
+  updateStats();
+  if (showToast) toast('Data refreshed', 'ok');
+}
+
+async function deleteVendor(id) {
+  try {
+    const res = await fetch(`${API}/vendor/${id}`, { method: 'DELETE' });
+    if (res.status === 404) { toast('Vendor not found', 'warn'); return; }
+    if (!res.ok) throw new Error();
+    state.vendors = state.vendors.filter(v => v.id !== id);
+    updateNavBadge();
+    updateStats();
+    renderVendorTable();
+    toast('Vendor removed', 'ok');
+  } catch {
+    toast('Failed to delete — check API', 'err');
+  }
+}
+
+async function postPredict(payload) {
+  const res = await fetch(`${API}/predict`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Prediction failed');
+  return data; // { risk_score, risk_category }
+}
+
+/* ── 4. DASHBOARD ── */
+function updateStats() {
+  const v = state.vendors;
+  const total  = v.length;
+  const high   = v.filter(x => x.risk_category === 'High Risk').length;
+  const medium = v.filter(x => x.risk_category === 'Medium Risk').length;
+  const low    = v.filter(x => x.risk_category === 'Low Risk').length;
+  const pct    = n => total ? `${Math.round(n / total * 100)}% of portfolio` : '—';
+
+  setText('s-total',  total || '0');
+  setText('s-high',   high  || '0');
+  setText('s-medium', medium || '0');
+  setText('s-low',    low   || '0');
+  setText('s-total-meta', total ? `${total} vendor${total !== 1 ? 's' : ''} in database` : 'no data yet');
+  setText('s-high-meta',   pct(high));
+  setText('s-med-meta',    pct(medium));
+  setText('s-low-meta',    pct(low));
+
+  const avg = total ? (v.reduce((s, x) => s + x.risk_score, 0) / total).toFixed(1) : '—';
+  const badge = document.getElementById('avg-score-badge');
+  if (badge) badge.textContent = `avg score: ${avg}`;
+}
+
+function renderDashboard() {
+  updateStats();
+
+  const v      = state.vendors;
+  const high   = v.filter(x => x.risk_category === 'High Risk').length;
+  const medium = v.filter(x => x.risk_category === 'Medium Risk').length;
+  const low    = v.filter(x => x.risk_category === 'Low Risk').length;
+
+  /* donut */
+  destroyChart('donut');
+  state.charts.donut = new Chart(getCtx('chart-donut'), {
+    type: 'doughnut',
+    data: {
+      labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+      datasets: [{
+        data: [high, medium, low],
+        backgroundColor: ['#ff4d4d', '#ffb347', '#00e5a0'],
+        borderWidth: 0,
+        hoverOffset: 5,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} vendors` } },
+      },
+    },
+  });
+
+  /* radar */
+  const avgOf = key => v.length ? v.reduce((s, x) => s + (x[key] || 0), 0) / v.length : 0;
+  destroyChart('radar');
+  state.charts.radar = new Chart(getCtx('chart-radar'), {
+    type: 'radar',
+    data: {
+      labels: ['Delay Rate', 'Defect Rate', 'Complaints', 'Performance', 'Risk Score'],
+      datasets: [{
+        data: [
+          norm(avgOf('delay_rate'), 30),
+          norm(avgOf('defect_rate'), 30),
+          norm(avgOf('complaints'), 10),
+          avgOf('performance_score'),
+          avgOf('risk_score'),
+        ],
+        borderColor: '#00e5a0',
+        backgroundColor: 'rgba(0,229,160,0.08)',
+        borderWidth: 2,
+        pointBackgroundColor: '#00e5a0',
+        pointRadius: 4,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        r: {
+          min: 0, max: 100,
+          ticks: { display: false },
+          grid:  { color: 'rgba(255,255,255,0.05)' },
+          angleLines: { color: 'rgba(255,255,255,0.05)' },
+          pointLabels: { color: '#6b7280', font: { size: 10, family: "'Space Mono'" } },
+        },
+      },
+    },
+  });
+
+  /* histogram */
+  const buckets = Array(10).fill(0);
+  v.forEach(x => { buckets[Math.min(9, Math.floor(x.risk_score / 10))]++; });
+  const bucketColors = buckets.map((_, i) =>
+    i >= 8 ? '#ff4d4d' : i >= 5 ? '#ffb347' : '#00e5a0'
+  );
+  destroyChart('hist');
+  state.charts.hist = new Chart(getCtx('chart-hist'), {
+    type: 'bar',
+    data: {
+      labels: ['0–9','10–19','20–29','30–39','40–49','50–59','60–69','70–79','80–89','90–100'],
+      datasets: [{
+        data: buckets,
+        backgroundColor: bucketColors,
+        borderRadius: 5,
+        borderSkipped: false,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { color: '#6b7280', font: { size: 10, family: "'Space Mono'" }, maxRotation: 0 },
+          grid:  { display: false },
+        },
+        y: {
+          ticks: { color: '#6b7280', font: { size: 10 }, stepSize: 1 },
+          grid:  { color: 'rgba(255,255,255,0.04)' },
+          beginAtZero: true,
+        },
+      },
+    },
+  });
+}
+
+/* ── 5. VENDOR TABLE ── */
+function initVendorTable() {
+  document.getElementById('vendor-search').addEventListener('input', e => {
+    state.vendorSearch = e.target.value.toLowerCase();
+    renderVendorTable();
+  });
+  document.querySelectorAll('.filter-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.vendorFilter = pill.dataset.filter;
+      renderVendorTable();
+    });
+  });
+}
+
+function renderVendorTable() {
+  let vendors = state.vendors;
+  if (state.vendorFilter !== 'all') {
+    vendors = vendors.filter(v => v.risk_category === state.vendorFilter);
+  }
+  if (state.vendorSearch) {
+    vendors = vendors.filter(v => (v.vendor_name || '').toLowerCase().includes(state.vendorSearch));
+  }
+
+  const wrap = document.getElementById('vendor-table-wrap');
+  if (!vendors.length) {
+    wrap.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">◎</div>
+      No vendors found.<br/>Run a prediction to add one.
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Vendor</th>
+          <th>Risk Score</th>
+          <th>Category</th>
+          <th>Delay %</th>
+          <th>Defect %</th>
+          <th>Performance</th>
+          <th>Contract Value</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${vendors.map(v => `
+          <tr>
+            <td><span class="mono-id">${v.id}</span></td>
+            <td>
+              ${v.vendor_name
+                ? `<span class="vendor-name">${escHtml(v.vendor_name)}</span>`
+                : `<span class="vendor-anon">Unnamed</span>`}
+            </td>
+            <td>
+              <div class="score-cell">
+                <div class="score-bar">
+                  <div class="score-fill" style="width:${v.risk_score}%;background:${scoreColor(v.risk_score)}"></div>
+                </div>
+                <span class="score-num" style="color:${scoreColor(v.risk_score)}">${v.risk_score.toFixed(1)}</span>
+              </div>
+            </td>
+            <td><span class="risk-pill ${pillClass(v.risk_category)}">${v.risk_category}</span></td>
+            <td class="mono-cell">${v.delay_rate.toFixed(1)}%</td>
+            <td class="mono-cell">${v.defect_rate.toFixed(1)}%</td>
+            <td class="mono-cell">${v.performance_score.toFixed(0)}</td>
+            <td class="mono-cell">$${Number(v.contract_value).toLocaleString()}</td>
+            <td>
+              <button class="del-btn" data-id="${v.id}" title="Delete vendor">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="3 6 5 6 21 6"/>
+                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                  <path d="M10 11v6"/><path d="M14 11v6"/>
+                  <path d="M9 6V4h6v2"/>
+                </svg>
+              </button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+
+  wrap.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', () => deleteVendor(Number(btn.dataset.id)));
+  });
+}
+
+/* ── 6. PREDICT ── */
+function initPredictPage() {
+  const ids = ['f-delay', 'f-defect', 'f-perf'];
+  ids.forEach(id => {
+    document.getElementById(id).addEventListener('input', onSliderChange);
+  });
+  ['f-complaints', 'f-contract'].forEach(id => {
+    document.getElementById(id).addEventListener('input', computeLiveScore);
+  });
+
+  document.getElementById('predict-btn').addEventListener('click', submitPredict);
+}
+
+function onSliderChange(e) {
+  const id  = e.target.id;
+  const val = parseFloat(e.target.value);
+  if (id === 'f-delay')  setText('sv-delay',  `${val.toFixed(1)}%`);
+  if (id === 'f-defect') setText('sv-defect', `${val.toFixed(1)}%`);
+  if (id === 'f-perf')   setText('sv-perf',   `${val.toFixed(0)} / 100`);
+  computeLiveScore();
+}
+
+function getFormValues() {
+  return {
+    vendor_name:       document.getElementById('f-name').value.trim(),
+    delay_rate:        parseFloat(document.getElementById('f-delay').value),
+    defect_rate:       parseFloat(document.getElementById('f-defect').value),
+    performance_score: parseFloat(document.getElementById('f-perf').value),
+    complaints:        Math.max(0, parseInt(document.getElementById('f-complaints').value) || 0),
+    contract_value:    Math.max(0, parseFloat(document.getElementById('f-contract').value) || 0),
+  };
+}
+
+function computeLiveScore() {
+  const f = getFormValues();
+  // mirrors backend _fallback_prediction for real-time preview
+  const raw =
+    0.40 * f.delay_rate +
+    0.30 * f.defect_rate +
+    0.20 * (f.complaints * 2) +
+    0.10 * (100 - f.performance_score) +
+    Math.min(20, f.contract_value / 10000);
+  const score = Math.round(Math.max(0, Math.min(100, raw)));
+  renderResult(score, f, false);
+}
+
+async function submitPredict() {
+  const btn = document.getElementById('predict-btn');
+  btn.disabled = true;
+  btn.textContent = 'Running…';
+
+  const f = getFormValues();
+  try {
+    const data = await postPredict(f);
+    const score = Math.round(data.risk_score);
+    renderResult(score, f, true);
+    toast(`Saved · ${data.risk_category} · ${score}/100`, 'ok');
+
+    // add to session history
+    state.sessionHistory.unshift({ name: f.vendor_name || 'Unnamed', score, cat: data.risk_category });
+    renderSessionHistory();
+
+    // reload vendors in background
+    await loadVendors();
+  } catch (err) {
+    // fallback to local estimate
+    computeLiveScore();
+    toast(err.message || 'API error — showing local estimate', 'warn');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run Prediction';
+  }
+}
+
+function renderResult(score, f, confirmed) {
+  document.getElementById('result-placeholder').style.display = 'none';
+  document.getElementById('result-content').style.display = 'block';
+
+  // gauge
+  const color = scoreColor(score);
+  if (state.gaugeChart) state.gaugeChart.destroy();
+  state.gaugeChart = new Chart(getCtx('chart-gauge'), {
+    type: 'doughnut',
+    data: {
+      datasets: [{
+        data: [score, 100 - score],
+        backgroundColor: [color, 'rgba(255,255,255,0.04)'],
+        borderWidth: 0,
+        circumference: 180,
+        rotation: 270,
+      }],
+    },
+    options: {
+      responsive: false,
+      cutout: '72%',
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    },
+  });
+  setText('gauge-number', score);
+
+  // category + description
+  const catEl  = document.getElementById('result-category');
+  const descEl = document.getElementById('result-desc');
+  if (score >= 75) {
+    catEl.textContent = confirmed ? 'High Risk ⚠' : 'High Risk (preview)';
+    catEl.className   = 'result-category cat-high';
+    descEl.textContent = 'Significant risk detected. Immediate review recommended — consider corrective action plans or alternative sourcing.';
+  } else if (score >= 45) {
+    catEl.textContent = confirmed ? 'Medium Risk' : 'Medium Risk (preview)';
+    catEl.className   = 'result-category cat-medium';
+    descEl.textContent = 'Moderate risk indicators. Increase monitoring cadence and set improvement targets for next quarter.';
+  } else {
+    catEl.textContent = confirmed ? 'Low Risk ✓' : 'Low Risk (preview)';
+    catEl.className   = 'result-category cat-low';
+    descEl.textContent = 'Vendor performing well across all metrics. Maintain standard monitoring with quarterly review.';
+  }
+
+  // factor bars
+  setFactor('delay',      f.delay_rate,        30,  `${f.delay_rate.toFixed(1)}%`);
+  setFactor('defect',     f.defect_rate,       30,  `${f.defect_rate.toFixed(1)}%`);
+  setFactor('complaints', f.complaints,        15,   String(f.complaints));
+  setFactor('perf',       f.performance_score, 100, `${f.performance_score.toFixed(0)}`);
+}
+
+function setFactor(key, val, max, label) {
+  const pct = Math.min(100, val / max * 100).toFixed(0);
+  const fill = document.getElementById('fb-' + key);
+  const valEl = document.getElementById('fv-' + key);
+  if (fill)  fill.style.width = pct + '%';
+  if (valEl) valEl.textContent = label;
+}
+
+function renderSessionHistory() {
+  if (!state.sessionHistory.length) return;
+  const card = document.getElementById('history-card');
+  const list = document.getElementById('history-list');
+  card.style.display = 'block';
+  list.innerHTML = state.sessionHistory.slice(0, 10).map(h => `
+    <div class="history-item">
+      <span class="h-name">${escHtml(h.name)}</span>
+      <span class="risk-pill ${pillClass(h.cat)}" style="font-size:10px;padding:2px 9px">${h.cat}</span>
+      <span class="h-score mono-cell" style="color:${scoreColor(h.score)}">${h.score.toFixed(1)}</span>
+    </div>
+  `).join('');
+}
+
+/* ── 7. UTILITIES ── */
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function getCtx(id) {
+  return document.getElementById(id).getContext('2d');
+}
+
+function destroyChart(key) {
+  if (state.charts[key]) { state.charts[key].destroy(); delete state.charts[key]; }
+}
+
+function scoreColor(s) {
+  return s >= 75 ? '#ff4d4d' : s >= 45 ? '#ffb347' : '#00e5a0';
+}
+
+function pillClass(cat) {
+  if (!cat) return 'pill-low';
+  return cat.includes('High') ? 'pill-high' : cat.includes('Medium') ? 'pill-medium' : 'pill-low';
+}
+
+function norm(val, max) { return Math.min(100, (val / max) * 100); }
+
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function updateNavBadge() {
+  setText('nav-badge', state.vendors.length);
+}
+
+function toast(msg, type = 'ok') {
+  const icons = {
+    ok:   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00e5a0" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    err:  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ff4d4d" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2.5" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `${icons[type] || ''} ${escHtml(msg)}`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.animation = 'toastOut 0.25s ease forwards';
+    setTimeout(() => el.remove(), 260);
+  }, 3200);
+}
+
+/* ── INIT ── */
+document.addEventListener('DOMContentLoaded', async () => {
+  initRouter();
+  initVendorTable();
+  initPredictPage();
+
+  // boot
+  computeLiveScore();          // show live gauge immediately
+  checkHealth();
+  await loadVendors();
+  renderDashboard();
+
+  // poll health every 12s
+  setInterval(checkHealth, 12000);
+});
+
+  </script>
+</body>
+</html>
